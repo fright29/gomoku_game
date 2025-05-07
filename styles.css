@@ -1,37 +1,57 @@
+/* 通用字體與對齊 */
 body {
   font-family: Arial, sans-serif;
   text-align: center;
+  background-color: #ffffff;
+  margin: 0;
+  padding: 20px;
 }
 
+/* 標題 */
+h1 {
+  margin-bottom: 10px;
+}
+
+/* 棋盤區塊 */
 #board {
   display: grid;
   grid-template-columns: repeat(15, 40px);
   grid-template-rows: repeat(15, 40px);
   gap: 1px;
   justify-content: center;
-  margin-top: 20px;
+  margin: 20px auto;
+  width: fit-content;
+  background-color: #999;
+  border: 2px solid #444;
 }
 
+/* 每個格子 */
 .cell {
   width: 40px;
   height: 40px;
+  background-color: #f0d9b5; /* 淡木色背景，像棋盤 */
   border: 1px solid #ccc;
-  background-color: #f0f0f0;
   cursor: pointer;
   box-sizing: border-box;
 }
 
+/* 黑棋 */
 .cell.black {
   background-color: black;
+  border-radius: 50%;
 }
 
+/* 白棋（加黑邊）*/
 .cell.white {
   background-color: white;
   border: 2px solid black;
+  border-radius: 50%;
 }
 
-
+/* 狀態文字 */
 #status {
   margin-top: 20px;
   font-size: 18px;
+  font-weight: bold;
+  color: #333;
 }
