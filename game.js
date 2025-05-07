@@ -1,7 +1,7 @@
 // game.js
 
 // 引入 Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // Firebase 配置
@@ -15,8 +15,14 @@ const firebaseConfig = {
   measurementId: "G-8EB69LG6JQ"
 };
 
-// 初始化 Firebase
-const app = initializeApp(firebaseConfig);
+// 初始化 Firebase（檢查是否已經初始化過）
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp(); // 使用已經初始化的 app
+}
+
 const database = getDatabase(app);
 
 // 遊戲邏輯函式，處理 Firebase 資料操作和同步
