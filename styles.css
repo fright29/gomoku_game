@@ -32,7 +32,7 @@ h1 {
 .cell {
   width: 32px;
   height: 32px;
-  background-color: #f0d9b5; /* 你要的棋盤格顏色 */
+  background-color: #f0d9b5; /* 棋盤格顏色 */
   cursor: pointer;
 }
 
@@ -53,4 +53,19 @@ h1 {
 .cell.white::before {
   background-color: white;
   border: 1px solid #666;
+}
+
+#resetBtn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+
+#resetBtn:hover {
+  background-color: #45a049;
 }
