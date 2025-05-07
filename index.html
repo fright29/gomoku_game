@@ -9,30 +9,9 @@
 <body>
   <h1>線上五子棋</h1>
   <p id="status">載入中...</p>
-  <button id="resetBtn">重新開始</button>
   <div id="board"></div>
 
-  <!-- Firebase SDK & Game 入口 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-    import { setupGame } from './game.js';
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
-      authDomain: "gomoku-58c73.firebaseapp.com",
-      databaseURL: "https://gomoku-58c73-default-rtdb.firebaseio.com",
-      projectId: "gomoku-58c73",
-      storageBucket: "gomoku-58c73.firebasestorage.app",
-      messagingSenderId: "468039195363",
-      appId: "1:468039195363:web:9e1957dd49eb27e1e003d6",
-      measurementId: "G-8EB69LG6JQ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    setupGame(db); // 呼叫你在 game.js 裡定義的主遊戲函式
-  </script>
+  <!-- 遊戲邏輯 -->
+  <script type="module" src="game.js"></script>
 </body>
 </html>
