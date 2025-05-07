@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>五子棋遊戲</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f9f9f9;
+    }
+    canvas {
+      border: 2px solid #333;
+      margin-top: 20px;
+    }
+    h1 {
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>五子棋</h1>
+  <canvas id="board" width="600" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const size = 15;
+    const cellSize = canvas.width / size;
+    const board = Array.from({ length: size }, () => Array(size).fill(null));
+    let current = "black";
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#555";
+      for (let i = 0; i < size; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cellSize / 2, cellSize / 2 + i * cellSize);
+        ctx.lineTo(canvas.width - cellSize / 2, cellSize / 2 + i * cellSize);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(cellSize / 2 + i * cellSize, cellSize / 2);
+        ctx.lineTo(cellSize / 2 + i * cellSize, canvas.height - cellSize / 2);
+        ctx.stroke();
+      }
+    }
+
+    function drawStone(x, y, color) {
+      const cx = x * cellSize + cellSize / 2;
+      const cy = y * cellSize + cellSize / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, cellSize / 2.5, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    function checkWin(x, y, color) {
+      const directions = [
+        [1, 0], [0, 1], [1, 1], [1, -1]
+      ];
+      for (const [dx, dy] of directions) {
+        let count = 1;
+        for (let step = 1; step < 5; step++) {
+          const nx = x + dx * step;
+          const ny = y + dy * step;
+          if (board[ny]?.[nx] === color) count++; else break;
+        }
+        for (let step = 1; step < 5; step++) {
+          const nx = x - dx * step;
+          const ny = y - dy * step;
+          if (board[ny]?.[nx] === color) count++; else break;
+        }
+        if (count >= 5) return true;
+      }
+      return false;
+    }
+
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
+      if (board[y][x]) return;
+      board[y][x] = current;
+      drawStone(x, y, current);
+      if (checkWin(x, y, current)) {
+        setTimeout(() => alert(current + " 贏了！"), 10);
+        canvas.removeEventListener("click", arguments.callee);
+      }
+      current = current === "black" ? "white" : "black";
+    });
+
+    drawBoard();
+  </script>
+</body>
+</html>
