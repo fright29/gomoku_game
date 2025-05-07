@@ -1,104 +1,97 @@
-// 初始化 Pusher（注意：trigger 需要 server 端，這裡用 client 模擬僅接收動作）
-const pusher = new Pusher('280e499348b08c81b7a0', {
-  cluster: 'ap3',
-  encrypted: true
-});
+// game.js
+export function setupGame(db) {
+  import { ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// 訂閱頻道
-const channel = pusher.subscribe('gomoku-game');
+  const size = 15;
+  const boardEl = document.getElementById("board");
+  const statusEl = document.getElementById("status");
 
-// 遊戲狀態
-let board = Array(15).fill().map(() => Array(15).fill(null));
-let currentPlayer = 'black';
-let isMyTurn = true;  // 暫時假設一個視窗一個人，不做登入判斷
-let gameEnded = false;
+  let board = Array.from({ length: size }, () => Array(size).fill(null));
+  let currentPlayer = "black";
+  let gameOver = false;
 
-// 建立棋盤
-const boardElement = document.getElementById('board');
-const statusText = document.getElementById('status');
-
-function renderBoard() {
-  for (let row = 0; row < 15; row++) {
-    for (let col = 0; col < 15; col++) {
-      const cell = document.createElement('div');
-      cell.classList.add('cell');
-      cell.dataset.row = row;
-      cell.dataset.col = col;
-      cell.addEventListener('click', handleClick);
-      boardElement.appendChild(cell);
+  // 建立棋盤 UI
+  function createBoard() {
+    boardEl.innerHTML = "";
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.dataset.x = x;
+        cell.dataset.y = y;
+        boardEl.appendChild(cell);
+      }
     }
   }
-}
 
-function handleClick(e) {
-  if (!isMyTurn || gameEnded) return;
-  const row = parseInt(e.target.dataset.row);
-  const col = parseInt(e.target.dataset.col);
-  if (board[row][col]) return;
+  // 勝利判斷
+  function checkWin(x, y, color) {
+    const directions = [
+      [1, 0], [0, 1], [1, 1], [1, -1]
+    ];
 
-  makeMove(row, col, currentPlayer);
-  channel.trigger('client-move-made', { row, col, color: currentPlayer });
+    for (const [dx, dy] of directions) {
+      let count = 1;
+      for (let dir of [1, -1]) {
+        let step = 1;
+        while (true) {
+          const nx = x + dx * step * dir;
+          const ny = y + dy * step * dir;
+          if (nx < 0 || ny < 0 || nx >= size || ny >= size) break;
+          if (board[ny][nx] !== color) break;
+          count++;
+          step++;
+        }
+      }
+      if (count >= 5) return true;
+    }
+    return false;
+  }
 
-  checkWin(row, col, currentPlayer);
+  // 設定 Firebase listener
+  const movesRef = ref(db, "moves");
+  onValue(movesRef, (snapshot) => {
+    const data = snapshot.val();
+    board = Array.from({ length: size }, () => Array(size).fill(null));
+    createBoard();
+    if (!data) return;
+    Object.entries(data).forEach(([pos, color]) => {
+      const [x, y] = pos.split(",").map(Number);
+      const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+      if (cell) cell.classList.add(color);
+      board[y][x] = color;
+    });
+    statusEl.textContent = `輪到 ${currentPlayer === "black" ? "黑棋" : "白棋"}`;
+    gameOver = false;
+  });
 
-  currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
-  isMyTurn = false;
-  statusText.textContent = "等待對方下棋...";
-}
+  // 點擊事件
+  boardEl.addEventListener("click", async (e) => {
+    if (gameOver) return;
 
-// 接收對方棋步
-channel.bind('client-move-made', function (data) {
-  if (gameEnded) return;
-  const { row, col, color } = data;
-  board[row][col] = color;
-  const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-  cell.classList.add(color);
+    const cell = e.target;
+    const x = parseInt(cell.dataset.x);
+    const y = parseInt(cell.dataset.y);
+    if (isNaN(x) || isNaN(y)) return;
+    if (board[y][x]) return;
 
-  checkWin(row, col, color);
+    const moveKey = `${x},${y}`;
+    board[y][x] = currentPlayer;
 
-  currentPlayer = color === 'black' ? 'white' : 'black';
-  isMyTurn = true;
-  statusText.textContent = "輪到你下棋";
-});
+    // 更新資料庫
+    await set(ref(db, `moves/${moveKey}`), currentPlayer);
 
-function makeMove(row, col, color) {
-  board[row][col] = color;
-  const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-  cell.classList.add(color);
-}
-
-// 勝利判斷
-function checkWin(row, col, color) {
-  const directions = [
-    [0, 1], [1, 0], [1, 1], [1, -1]
-  ];
-
-  for (const [dx, dy] of directions) {
-    let count = 1;
-    count += countConsecutive(row, col, dx, dy, color);
-    count += countConsecutive(row, col, -dx, -dy, color);
-
-    if (count >= 5) {
-      statusText.textContent = (color === 'black' ? '黑棋' : '白棋') + " 獲勝！";
-      gameEnded = true;
+    // 檢查勝利
+    if (checkWin(x, y, currentPlayer)) {
+      statusEl.textContent = `${currentPlayer === "black" ? "黑棋" : "白棋"} 獲勝！`;
+      gameOver = true;
       return;
     }
-  }
+
+    // 換手
+    currentPlayer = currentPlayer === "black" ? "white" : "black";
+  });
+
+  createBoard();
+  statusEl.textContent = "遊戲開始，黑棋先手";
 }
-
-function countConsecutive(row, col, dx, dy, color) {
-  let r = row + dx;
-  let c = col + dy;
-  let count = 0;
-
-  while (r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] === color) {
-    count++;
-    r += dx;
-    c += dy;
-  }
-
-  return count;
-}
-
-renderBoard();
-statusText.textContent = "輪到你下棋";
