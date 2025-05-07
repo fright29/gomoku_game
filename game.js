@@ -1,7 +1,4 @@
-// game.js
-
-// 引入 Firebase
-import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // Firebase 配置
@@ -15,61 +12,70 @@ const firebaseConfig = {
   measurementId: "G-8EB69LG6JQ"
 };
 
-// 初始化 Firebase（檢查是否已經初始化過）
-let app;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp(); // 使用已經初始化的 app
-}
-
+// Firebase 初始化
+const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// 遊戲邏輯函式，處理 Firebase 資料操作和同步
-export function setupGame() {
-  const boardSize = 15;
-  const boardEl = document.getElementById("board");
+// 遊戲初始化
+const boardSize = 15;
+const boardEl = document.getElementById("board");
+const statusEl = document.getElementById("status");
+const resetBtn = document.getElementById("resetBtn");
 
-  // 建立棋盤格
-  for (let y = 0; y < boardSize; y++) {
-    for (let x = 0; x < boardSize; x++) {
-      const cell = document.createElement("div");
-      cell.classList.add("cell");
-      cell.dataset.x = x;
-      cell.dataset.y = y;
-      boardEl.appendChild(cell);
-    }
+// 建立棋盤格
+for (let y = 0; y < boardSize; y++) {
+  for (let x = 0; x < boardSize; x++) {
+    const cell = document.createElement("div");
+    cell.classList.add("cell");
+    cell.dataset.x = x;
+    cell.dataset.y = y;
+    boardEl.appendChild(cell);
   }
+}
 
-  // 監聽玩家操作並更新資料庫
-  boardEl.addEventListener("click", (event) => {
-    const x = event.target.dataset.x;
-    const y = event.target.dataset.y;
+// 重設棋盤的事件處理
+resetBtn.addEventListener("click", resetGame);
 
-    if (x && y) {
-      const moveData = {
-        x: parseInt(x),
-        y: parseInt(y),
-        color: "black" // 這裡是示範黑棋，實際遊戲可以更改
-      };
+// 監聽玩家操作並更新 Firebase
+boardEl.addEventListener("click", (event) => {
+  const x = event.target.dataset.x;
+  const y = event.target.dataset.y;
 
-      // 儲存棋步到 Firebase
-      set(ref(database, 'moves/' + Date.now()), moveData);
-    }
+  if (x && y) {
+    const moveData = {
+      x: parseInt(x),
+      y: parseInt(y),
+      color: "black", // 這裡是黑棋，實際遊戲中可以進行玩家切換
+    };
+
+    set(ref(database, 'moves/' + Date.now()), moveData);
+  }
+});
+
+// 監聽 Firebase 中的棋步更新
+const movesRef = ref(database, 'moves');
+onValue(movesRef, (snapshot) => {
+  const moves = snapshot.val();
+  if (moves) {
+    Object.values(moves).forEach((move) => {
+      const cell = document.querySelector(`[data-x="${move.x}"][data-y="${move.y}"]`);
+      if (cell) {
+        cell.classList.add(move.color); // 更新格子顏色
+      }
+    });
+  }
+});
+
+// 重設遊戲狀態
+function resetGame() {
+  // 清空 Firebase 中的棋步資料
+  set(ref(database, 'moves'), null);
+  
+  // 重設棋盤顯示
+  const cells = document.querySelectorAll(".cell");
+  cells.forEach(cell => {
+    cell.classList.remove("black", "white");
   });
-
-  // 監聽 Firebase 中的棋步更新
-  const movesRef = ref(database, 'moves');
-  onValue(movesRef, (snapshot) => {
-    const moves = snapshot.val();
-    if (moves) {
-      // 更新棋盤，顯示對應顏色的棋子
-      Object.values(moves).forEach(move => {
-        const cell = document.querySelector(`[data-x="${move.x}"][data-y="${move.y}"]`);
-        if (cell) {
-          cell.classList.add(move.color); // 添加黑棋或白棋的 CSS 類別
-        }
-      });
-    }
-  });
+  
+  statusEl.textContent = "遊戲重新開始！";
 }
