@@ -24,14 +24,11 @@ function handleClick(e) {
   const row = parseInt(e.target.dataset.row);
   const col = parseInt(e.target.dataset.col);
 
-  if (board[row][col] !== null) {
-    return; // 已經下過了
-  }
+  if (board[row][col] !== null) return; // 已經有棋子
 
   board[row][col] = currentPlayer;
   e.target.classList.add(currentPlayer);
 
-  // 換下一位
   currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
   updateStatus();
 }
@@ -41,5 +38,4 @@ function updateStatus() {
   status.textContent = `目前輪到 ${currentPlayer === 'black' ? '黑棋' : '白棋'} 下`;
 }
 
-// 初始化
 createBoard();
