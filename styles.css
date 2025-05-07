@@ -1,7 +1,7 @@
 body {
   font-family: Arial, sans-serif;
   text-align: center;
-  background-color: #ffffff; 
+  background-color: #ded1a8; /* 更柔和的沙色背景，配合棋盤色 */
   margin: 0;
   padding: 20px;
 }
@@ -32,7 +32,7 @@ h1 {
 .cell {
   width: 32px;
   height: 32px;
-  background-color: #f0d9b5; /* 棋盤格底色 */
+  background-color: #f0d9b5; /* 你要的棋盤格顏色 */
   cursor: pointer;
 }
 
@@ -52,5 +52,5 @@ h1 {
 
 .cell.white::before {
   background-color: white;
-  border: 1px solid #666; /* 增加白棋邊框可視性 */
+  border: 1px solid #666;
 }
