@@ -52,17 +52,17 @@ function updateStatus() {
 
 function checkWin(row, col, player) {
   return (
-    countConsecutive(row, col, 0, 1, player) + countConsecutive(row, col, 0, -1, player) > 4 || // 橫
-    countConsecutive(row, col, 1, 0, player) + countConsecutive(row, col, -1, 0, player) > 4 || // 直
-    countConsecutive(row, col, 1, 1, player) + countConsecutive(row, col, -1, -1, player) > 4 || // 斜右下
-    countConsecutive(row, col, 1, -1, player) + countConsecutive(row, col, -1, 1, player) > 4    // 斜左下
+    countConsecutive(row, col, 0, 1, player) + countConsecutive(row, col, 0, -1, player) >= 4 || // 橫
+    countConsecutive(row, col, 1, 0, player) + countConsecutive(row, col, -1, 0, player) >= 4 || // 直
+    countConsecutive(row, col, 1, 1, player) + countConsecutive(row, col, -1, -1, player) >= 4 || // 斜右下
+    countConsecutive(row, col, 1, -1, player) + countConsecutive(row, col, -1, 1, player) >= 4    // 斜左下
   );
 }
 
-function countConsecutive(row, col, dRow, dCol, player) {
+function countConsecutive(row, col, deltaRow, deltaCol, player) {
   let count = 0;
-  let r = row + dRow;
-  let c = col + dCol;
+  let r = row + deltaRow;
+  let c = col + deltaCol;
 
   while (
     r >= 0 && r < boardSize &&
@@ -70,8 +70,8 @@ function countConsecutive(row, col, dRow, dCol, player) {
     board[r][c] === player
   ) {
     count++;
-    r += dRow;
-    c += dCol;
+    r += deltaRow;
+    c += deltaCol;
   }
 
   return count;
