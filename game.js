@@ -1,16 +1,20 @@
-// game.js
 export function setupGame(db) {
-  import { ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import {
+    ref,
+    set,
+    remove,
+    onValue
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   const size = 15;
   const boardEl = document.getElementById("board");
   const statusEl = document.getElementById("status");
+  const resetBtn = document.getElementById("resetBtn");
 
   let board = Array.from({ length: size }, () => Array(size).fill(null));
   let currentPlayer = "black";
   let gameOver = false;
 
-  // 建立棋盤 UI
   function createBoard() {
     boardEl.innerHTML = "";
     for (let y = 0; y < size; y++) {
@@ -24,12 +28,10 @@ export function setupGame(db) {
     }
   }
 
-  // 勝利判斷
   function checkWin(x, y, color) {
     const directions = [
       [1, 0], [0, 1], [1, 1], [1, -1]
     ];
-
     for (const [dx, dy] of directions) {
       let count = 1;
       for (let dir of [1, -1]) {
@@ -48,13 +50,19 @@ export function setupGame(db) {
     return false;
   }
 
-  // 設定 Firebase listener
   const movesRef = ref(db, "moves");
+
+  // 監聽資料變更
   onValue(movesRef, (snapshot) => {
     const data = snapshot.val();
     board = Array.from({ length: size }, () => Array(size).fill(null));
     createBoard();
-    if (!data) return;
+    if (!data) {
+      statusEl.textContent = "遊戲開始，黑棋先手";
+      gameOver = false;
+      currentPlayer = "black";
+      return;
+    }
     Object.entries(data).forEach(([pos, color]) => {
       const [x, y] = pos.split(",").map(Number);
       const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
@@ -62,13 +70,10 @@ export function setupGame(db) {
       board[y][x] = color;
     });
     statusEl.textContent = `輪到 ${currentPlayer === "black" ? "黑棋" : "白棋"}`;
-    gameOver = false;
   });
 
-  // 點擊事件
   boardEl.addEventListener("click", async (e) => {
     if (gameOver) return;
-
     const cell = e.target;
     const x = parseInt(cell.dataset.x);
     const y = parseInt(cell.dataset.y);
@@ -77,19 +82,20 @@ export function setupGame(db) {
 
     const moveKey = `${x},${y}`;
     board[y][x] = currentPlayer;
-
-    // 更新資料庫
     await set(ref(db, `moves/${moveKey}`), currentPlayer);
 
-    // 檢查勝利
     if (checkWin(x, y, currentPlayer)) {
       statusEl.textContent = `${currentPlayer === "black" ? "黑棋" : "白棋"} 獲勝！`;
       gameOver = true;
       return;
     }
 
-    // 換手
     currentPlayer = currentPlayer === "black" ? "white" : "black";
+  });
+
+  // 重設按鈕：清除 Firebase 上的 moves 資料
+  resetBtn.addEventListener("click", async () => {
+    await remove(movesRef);
   });
 
   createBoard();
