@@ -1,0 +1,56 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background-color: #e0e0e0; /* 改成灰色背景，白棋清楚可見 */
+  margin: 0;
+  padding: 20px;
+}
+
+h1 {
+  margin-bottom: 10px;
+}
+
+#status {
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  color: #333;
+}
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(15, 32px);
+  grid-template-rows: repeat(15, 32px);
+  gap: 1px;
+  justify-content: center;
+  margin: 0 auto;
+  background-color: #999;
+  padding: 5px;
+  border: 2px solid #444;
+  width: max-content;
+}
+
+.cell {
+  width: 32px;
+  height: 32px;
+  background-color: #f0d9b5; /* 棋盤格底色 */
+  cursor: pointer;
+}
+
+.cell.black::before,
+.cell.white::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin: 4px auto;
+  border-radius: 50%;
+}
+
+.cell.black::before {
+  background-color: black;
+}
+
+.cell.white::before {
+  background-color: white;
+  border: 1px solid #666; /* 增加白棋邊框可視性 */
+}
