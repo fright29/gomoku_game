@@ -33,22 +33,36 @@ for (let y = 0; y < boardSize; y++) {
   }
 }
 
-// 重設棋盤的事件處理
-resetBtn.addEventListener("click", resetGame);
-
 // 監聽玩家操作並更新 Firebase
 boardEl.addEventListener("click", (event) => {
   const x = event.target.dataset.x;
   const y = event.target.dataset.y;
 
   if (x && y) {
-    const moveData = {
-      x: parseInt(x),
-      y: parseInt(y),
-      color: "black", // 這裡是黑棋，實際遊戲中可以進行玩家切換
-    };
+    // 確認是輪到這個玩家下棋
+    const turnRef = ref(database, 'turn');
+    onValue(turnRef, (snapshot) => {
+      const turn = snapshot.val();
 
-    set(ref(database, 'moves/' + Date.now()), moveData);
+      // 目前輪到哪個玩家，如果是 "black" 才可以下棋
+      if (turn === "black") {
+        const moveData = {
+          x: parseInt(x),
+          y: parseInt(y),
+          color: "black", // 當輪到黑棋時
+        };
+        set(ref(database, 'moves/' + Date.now()), moveData);
+        set(ref(database, 'turn'), "white"); // 換白棋
+      } else if (turn === "white") {
+        const moveData = {
+          x: parseInt(x),
+          y: parseInt(y),
+          color: "white", // 當輪到白棋時
+        };
+        set(ref(database, 'moves/' + Date.now()), moveData);
+        set(ref(database, 'turn'), "black"); // 換黑棋
+      }
+    });
   }
 });
 
@@ -66,6 +80,13 @@ onValue(movesRef, (snapshot) => {
   }
 });
 
+// 監聽 Firebase 中的輪流變更
+const turnRef = ref(database, 'turn');
+onValue(turnRef, (snapshot) => {
+  const turn = snapshot.val();
+  statusEl.textContent = turn === "black" ? "黑棋回合" : "白棋回合";
+});
+
 // 重設遊戲狀態
 function resetGame() {
   // 清空 Firebase 中的棋步資料
@@ -77,5 +98,11 @@ function resetGame() {
     cell.classList.remove("black", "white");
   });
   
+  // 重設輪到的玩家為黑棋
+  set(ref(database, 'turn'), "black");
+
   statusEl.textContent = "遊戲重新開始！";
 }
+
+// 初始化時將輪到的玩家設為黑棋
+set(ref(database, 'turn'), "black");
