@@ -17,10 +17,9 @@ h1 {
 }
 
 #restart {
-  margin-bottom: 10px;
-  padding: 6px 12px;
+  margin-bottom: 15px;
+  padding: 8px 16px;
   font-size: 1em;
-  cursor: pointer;
 }
 
 #board {
