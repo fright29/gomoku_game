@@ -20,7 +20,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // ⚠️ 使用正確區域的 Database URL
-const database = getDatabase(app, "https://gomoku-58c73-default-rtdb.asia-southeast1.firebasedatabase.app");
+const database = getDatabase(app, "https://gomoku-58c73-default-rtdb.firebaseio.com/");
 
 // 建立初始 15x15 棋盤
 function createEmptyBoard() {
