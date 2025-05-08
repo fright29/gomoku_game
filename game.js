@@ -1,108 +1,118 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Firebase 配置
+// ✅ 初始化 Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
   authDomain: "gomoku-58c73.firebaseapp.com",
   projectId: "gomoku-58c73",
-  storageBucket: "gomoku-58c73.firebasestorage.app",
+  storageBucket: "gomoku-58c73.appspot.com",
   messagingSenderId: "468039195363",
   appId: "1:468039195363:web:9e1957dd49eb27e1e003d6",
   measurementId: "G-8EB69LG6JQ"
 };
 
-// Firebase 初始化
 const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
+const db = getDatabase(app);
+const boardRef = ref(db, "gomoku/board");
+const turnRef = ref(db, "gomoku/turn");
+const winnerRef = ref(db, "gomoku/winner");
 
-// 遊戲初始化
-const boardSize = 15;
-const boardEl = document.getElementById("board");
+const size = 15;
+let board = Array.from({ length: size }, () => Array(size).fill(null));
+let myColor = null;
+
 const statusEl = document.getElementById("status");
-const resetBtn = document.getElementById("resetBtn");
+const boardEl = document.getElementById("board");
+const restartBtn = document.getElementById("restart");
 
-// 建立棋盤格
-for (let y = 0; y < boardSize; y++) {
-  for (let x = 0; x < boardSize; x++) {
-    const cell = document.createElement("div");
-    cell.classList.add("cell");
-    cell.dataset.x = x;
-    cell.dataset.y = y;
-    boardEl.appendChild(cell);
+// ✅ 建立棋盤
+function renderBoard() {
+  boardEl.innerHTML = '';
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      if (board[y][x]) cell.classList.add(board[y][x]);
+      cell.dataset.x = x;
+      cell.dataset.y = y;
+      boardEl.appendChild(cell);
+    }
   }
 }
 
-// 監聽玩家操作並更新 Firebase
-boardEl.addEventListener("click", (event) => {
-  const x = event.target.dataset.x;
-  const y = event.target.dataset.y;
+function checkWinner(x, y, color) {
+  const directions = [
+    [1, 0], [0, 1],
+    [1, 1], [1, -1]
+  ];
 
-  if (x && y) {
-    // 確認是輪到這個玩家下棋
-    const turnRef = ref(database, 'turn');
-    onValue(turnRef, (snapshot) => {
-      const turn = snapshot.val();
+  for (let [dx, dy] of directions) {
+    let count = 1;
+    for (let i = 1; i < 5; i++) {
+      if (board[y + dy * i]?.[x + dx * i] === color) count++;
+      else break;
+    }
+    for (let i = 1; i < 5; i++) {
+      if (board[y - dy * i]?.[x - dx * i] === color) count++;
+      else break;
+    }
+    if (count >= 5) return true;
+  }
+  return false;
+}
 
-      // 目前輪到哪個玩家，如果是 "black" 才可以下棋
-      if (turn === "black") {
-        const moveData = {
-          x: parseInt(x),
-          y: parseInt(y),
-          color: "black", // 當輪到黑棋時
-        };
-        set(ref(database, 'moves/' + Date.now()), moveData);
-        set(ref(database, 'turn'), "white"); // 換白棋
-      } else if (turn === "white") {
-        const moveData = {
-          x: parseInt(x),
-          y: parseInt(y),
-          color: "white", // 當輪到白棋時
-        };
-        set(ref(database, 'moves/' + Date.now()), moveData);
-        set(ref(database, 'turn'), "black"); // 換黑棋
-      }
-    });
+boardEl.addEventListener("click", (e) => {
+  if (!myColor) return;
+  const cell = e.target.closest(".cell");
+  if (!cell) return;
+
+  const x = +cell.dataset.x;
+  const y = +cell.dataset.y;
+  if (board[y][x]) return;
+
+  // 判斷輪到誰
+  onValue(turnRef, (snapshot) => {
+    const turn = snapshot.val();
+    if (turn !== myColor) return;
+
+    board[y][x] = myColor;
+    set(boardRef, board);
+    const win = checkWinner(x, y, myColor);
+    if (win) set(winnerRef, myColor);
+    else set(turnRef, myColor === "black" ? "white" : "black");
+  }, { onlyOnce: true });
+});
+
+restartBtn.addEventListener("click", () => {
+  board = Array.from({ length: size }, () => Array(size).fill(null));
+  set(boardRef, board);
+  set(turnRef, "black");
+  set(winnerRef, null);
+});
+
+// ✅ Firebase 監聽
+onValue(boardRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    board = data;
+    renderBoard();
   }
 });
 
-// 監聽 Firebase 中的棋步更新
-const movesRef = ref(database, 'moves');
-onValue(movesRef, (snapshot) => {
-  const moves = snapshot.val();
-  if (moves) {
-    Object.values(moves).forEach((move) => {
-      const cell = document.querySelector(`[data-x="${move.x}"][data-y="${move.y}"]`);
-      if (cell) {
-        cell.classList.add(move.color); // 更新格子顏色
-      }
-    });
-  }
-});
-
-// 監聽 Firebase 中的輪流變更
-const turnRef = ref(database, 'turn');
 onValue(turnRef, (snapshot) => {
   const turn = snapshot.val();
-  statusEl.textContent = turn === "black" ? "黑棋回合" : "白棋回合";
+  if (!myColor) {
+    myColor = turn;
+    statusEl.textContent = `你是 ${myColor === "black" ? "黑棋" : "白棋"}`;
+  } else {
+    statusEl.textContent = `輪到 ${turn === myColor ? "你" : "對手"} 下`;
+  }
 });
 
-// 重設遊戲狀態
-function resetGame() {
-  // 清空 Firebase 中的棋步資料
-  set(ref(database, 'moves'), null);
-  
-  // 重設棋盤顯示
-  const cells = document.querySelectorAll(".cell");
-  cells.forEach(cell => {
-    cell.classList.remove("black", "white");
-  });
-  
-  // 重設輪到的玩家為黑棋
-  set(ref(database, 'turn'), "black");
-
-  statusEl.textContent = "遊戲重新開始！";
-}
-
-// 初始化時將輪到的玩家設為黑棋
-set(ref(database, 'turn'), "black");
+onValue(winnerRef, (snapshot) => {
+  const winner = snapshot.val();
+  if (winner) {
+    statusEl.textContent = `遊戲結束！${winner === myColor ? "你贏了！" : "你輸了！"}`;
+  }
+});
