@@ -1,5 +1,6 @@
+// 初始化 Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
@@ -8,75 +9,71 @@ const firebaseConfig = {
   storageBucket: "gomoku-58c73.appspot.com",
   messagingSenderId: "468039195363",
   appId: "1:468039195363:web:9e1957dd49eb27e1e003d6",
-  measurementId: "G-8EB69LG6JQ",
-  databaseURL: "https://gomoku-58c73-default-rtdb.firebaseio.com"
+  measurementId: "G-8EB69LG6JQ"
 };
 
 const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-const boardRef = ref(database, "gomoku/board");
-const turnRef = ref(database, "gomoku/turn");
 
-const boardElement = document.getElementById("board");
-const restartButton = document.getElementById("restart");
+// ⚠️ 使用正確區域的 Database URL
+const database = getDatabase(app, "https://gomoku-58c73-default-rtdb.asia-southeast1.firebasedatabase.app");
 
-let gameState = Array.from({ length: 15 }, () => Array(15).fill(null));
-let currentTurn = "black";
+// 建立初始 15x15 棋盤
+function createEmptyBoard() {
+  return Array.from({ length: 15 }, () => Array(15).fill(0));
+}
 
-function renderBoard() {
-  boardElement.innerHTML = "";
-  for (let y = 0; y < 15; y++) {
-    for (let x = 0; x < 15; x++) {
+// 寫入資料
+function writeGameState(board, currentPlayer) {
+  set(ref(database, "gameState"), { board, currentPlayer });
+}
+
+// 畫棋盤
+function renderBoard(board) {
+  const boardDiv = document.getElementById("board");
+  boardDiv.innerHTML = "";
+
+  for (let i = 0; i < 15; i++) {
+    const row = document.createElement("div");
+    row.className = "row";
+
+    for (let j = 0; j < 15; j++) {
       const cell = document.createElement("div");
-      cell.classList.add("cell");
-      if (gameState[y][x] === "black") cell.classList.add("black");
-      if (gameState[y][x] === "white") cell.classList.add("white");
-      cell.dataset.x = x;
-      cell.dataset.y = y;
-      cell.addEventListener("click", handleCellClick);
-      boardElement.appendChild(cell);
+      cell.className = "cell";
+      if (board[i][j] === 1) cell.classList.add("black");
+      else if (board[i][j] === 2) cell.classList.add("white");
+
+      cell.addEventListener("click", () => handleCellClick(i, j));
+      row.appendChild(cell);
     }
+    boardDiv.appendChild(row);
   }
 }
 
-function handleCellClick(e) {
-  const x = parseInt(e.target.dataset.x);
-  const y = parseInt(e.target.dataset.y);
+let currentPlayer = 1;
+let board = createEmptyBoard();
 
-  if (!gameState[y]) gameState[y] = Array(15).fill(null); // 防止 undefined
-  if (gameState[y][x]) return;
-
-  gameState[y][x] = currentTurn;
-  currentTurn = currentTurn === "black" ? "white" : "black";
-
-  set(boardRef, gameState);
-  set(turnRef, currentTurn);
+function handleCellClick(i, j) {
+  if (board[i][j] !== 0) return;
+  board[i][j] = currentPlayer;
+  currentPlayer = currentPlayer === 1 ? 2 : 1;
+  writeGameState(board, currentPlayer);
 }
 
-restartButton.addEventListener("click", () => {
-  const emptyBoard = Array.from({ length: 15 }, () => Array(15).fill(null));
-  set(boardRef, emptyBoard);
-  set(turnRef, "black");
+// 從 Firebase 同步資料
+onValue(ref(database, "gameState"), (snapshot) => {
+  const data = snapshot.val();
+  if (!data || !Array.isArray(data.board)) {
+    console.warn("Game state is invalid: ", data);
+    return;
+  }
+  board = data.board;
+  currentPlayer = data.currentPlayer;
+  renderBoard(board);
 });
 
-onValue(boardRef, (snapshot) => {
-  const newGameState = snapshot.val();
-  if (newGameState) {
-    try {
-      // 修正：將物件轉為二維陣列
-      gameState = Object.values(newGameState).map(row =>
-        Array.isArray(row) ? row : Object.values(row)
-      );
-      renderBoard();
-    } catch (err) {
-      console.error("Game state is invalid:", newGameState);
-    }
-  }
-});
-
-onValue(turnRef, (snapshot) => {
-  const newTurn = snapshot.val();
-  if (newTurn) {
-    currentTurn = newTurn;
-  }
+// 按鈕重設
+document.getElementById("resetBtn").addEventListener("click", () => {
+  board = createEmptyBoard();
+  currentPlayer = 1;
+  writeGameState(board, currentPlayer);
 });
