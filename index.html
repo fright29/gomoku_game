@@ -1,37 +1,18 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>線上五子棋</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五子棋</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>線上五子棋</h1>
-  <p id="status">載入中...</p>
-  <button id="restart">重新開始</button>
-  <div id="board"></div>
+  <h1>五子棋</h1>
+  <div id="board" class="board"></div>
+  <button id="resetButton">重新開始</button>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
-  <!-- 初始化 Firebase -->
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
-      authDomain: "gomoku-58c73.firebaseapp.com",
-      projectId: "gomoku-58c73",
-      storageBucket: "gomoku-58c73.appspot.com",
-      messagingSenderId: "468039195363",
-      appId: "1:468039195363:web:9e1957dd49eb27e1e003d6",
-      measurementId: "G-8EB69LG6JQ",
-      databaseURL: "https://gomoku-58c73-default-rtdb.asia-southeast1.firebasedatabase.app/"
-    };
-    firebase.initializeApp(firebaseConfig);
-  </script>
-
-  <!-- 遊戲邏輯 -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
