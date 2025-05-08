@@ -96,8 +96,11 @@ onValue(boardRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
     board = data;
-    renderBoard();
+  } else {
+    board = Array.from({ length: size }, () => Array(size).fill(null));
+    set(boardRef, board);  // 初始化 Firebase 棋盤資料
   }
+  renderBoard(); // 無論有無資料都要渲染
 });
 
 onValue(turnRef, (snapshot) => {
