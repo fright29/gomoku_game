@@ -57,6 +57,7 @@ function renderBoard(board) {
 let currentPlayer = 1;
 let board = createEmptyBoard();
 
+// 處理棋盤格子點擊
 function handleCellClick(i, j) {
   if (board[i][j] !== 0) return;
   board[i][j] = currentPlayer;
@@ -67,13 +68,21 @@ function handleCellClick(i, j) {
 // 從 Firebase 同步資料
 onValue(ref(database, "gameState"), (snapshot) => {
   const data = snapshot.val();
-  if (!data || !Array.isArray(data.board)) {
+  
+  // 如果資料為 null，初始化資料
+  if (!data) {
+    console.log("Game state is null, initializing...");
+    board = createEmptyBoard();
+    currentPlayer = 1;
+    writeGameState(board, currentPlayer);
+  } else if (!Array.isArray(data.board)) {
     console.warn("Game state is invalid: ", data);
-    return;
+  } else {
+    // 如果資料有效，更新棋盤與玩家
+    board = data.board;
+    currentPlayer = data.currentPlayer;
+    renderBoard(board);
   }
-  board = data.board;
-  currentPlayer = data.currentPlayer;
-  renderBoard(board);
 });
 
 // 按鈕重設
