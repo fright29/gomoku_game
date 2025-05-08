@@ -1,3 +1,8 @@
+// 導入 Firebase 9 的模組化 SDK
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+// Firebase 配置
 const firebaseConfig = {
   apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
   authDomain: "gomoku-58c73.firebaseapp.com",
@@ -8,11 +13,12 @@ const firebaseConfig = {
   measurementId: "G-8EB69LG6JQ",
   databaseURL: "https://gomoku-58c73-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
-firebase.initializeApp(firebaseConfig);
 
-const db = firebase.database();
-const boardRef = db.ref('board');
-const gameRef = db.ref('game');
+// 初始化 Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const boardRef = ref(db, 'board');
+const gameRef = ref(db, 'game');
 
 let currentPlayer = 'black'; // 黑方先
 let gameState = Array(15).fill(null).map(() => Array(15).fill(null)); // 15x15棋盤
@@ -46,24 +52,24 @@ const handleCellClick = (e) => {
   e.target.classList.add(currentPlayer);
 
   // 儲存到 Firebase
-  boardRef.set(gameState);
+  set(boardRef, gameState);
   
   // 切換玩家
   currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
-  gameRef.update({ currentPlayer });
+  update(gameRef, { currentPlayer });
 };
 
 // 重新開始遊戲
 const resetGame = () => {
   gameState = Array(15).fill(null).map(() => Array(15).fill(null));
-  boardRef.set(gameState);
+  set(boardRef, gameState);
   createBoard();
   currentPlayer = 'black'; // 黑方先
-  gameRef.update({ currentPlayer });
+  update(gameRef, { currentPlayer });
 };
 
 // 監聽 Firebase 上的遊戲狀態
-gameRef.on('value', (snapshot) => {
+onValue(gameRef, (snapshot) => {
   const gameData = snapshot.val();
   if (gameData && gameData.currentPlayer) {
     currentPlayer = gameData.currentPlayer;
@@ -71,7 +77,7 @@ gameRef.on('value', (snapshot) => {
 });
 
 // 監聽 Firebase 上的棋盤狀態
-boardRef.on('value', (snapshot) => {
+onValue(boardRef, (snapshot) => {
   const newGameState = snapshot.val();
   if (newGameState) {
     gameState = newGameState;
