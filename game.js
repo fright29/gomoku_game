@@ -57,11 +57,69 @@ function renderBoard(board) {
 let currentPlayer = 1;
 let board = createEmptyBoard();
 
+// 判斷勝利條件
+function checkWin() {
+  // 方向：水平、垂直、對角線
+  const directions = [
+    { x: 0, y: 1 },  // 水平
+    { x: 1, y: 0 },  // 垂直
+    { x: 1, y: 1 },  // 斜對角（左上到右下）
+    { x: 1, y: -1 }, // 斜對角（右上到左下）
+  ];
+
+  for (let i = 0; i < 15; i++) {
+    for (let j = 0; j < 15; j++) {
+      const player = board[i][j];
+      if (player === 0) continue;  // 如果該位置是空的，跳過
+
+      // 檢查四個方向
+      for (const { x, y } of directions) {
+        let count = 1;
+
+        // 往正方向檢查
+        for (let k = 1; k < 5; k++) {
+          const ni = i + x * k;
+          const nj = j + y * k;
+          if (ni >= 0 && ni < 15 && nj >= 0 && nj < 15 && board[ni][nj] === player) {
+            count++;
+          } else {
+            break;
+          }
+        }
+
+        // 往反方向檢查
+        for (let k = 1; k < 5; k++) {
+          const ni = i - x * k;
+          const nj = j - y * k;
+          if (ni >= 0 && ni < 15 && nj >= 0 && nj < 15 && board[ni][nj] === player) {
+            count++;
+          } else {
+            break;
+          }
+        }
+
+        // 如果連成五顆，則玩家獲勝
+        if (count >= 5) {
+          return player;
+        }
+      }
+    }
+  }
+  return 0;  // 沒有獲勝者
+}
+
 // 處理棋盤格子點擊
 function handleCellClick(i, j) {
   if (board[i][j] !== 0) return;
   board[i][j] = currentPlayer;
-  currentPlayer = currentPlayer === 1 ? 2 : 1;
+  const winner = checkWin();
+
+  if (winner) {
+    alert(winner === 1 ? "黑方獲勝！" : "白方獲勝！");
+  } else {
+    currentPlayer = currentPlayer === 1 ? 2 : 1;
+  }
+
   writeGameState(board, currentPlayer);
 }
 
