@@ -1,19 +1,47 @@
+/* 設定整體頁面的佈局 */
 body {
   font-family: sans-serif;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   margin-top: 20px;
+  height: 100vh; /* 讓頁面垂直置中 */
+  background-color: #f2f2f2; /* 背景顏色 */
 }
 
+/* 標題樣式 */
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* 重設按鈕的樣式 */
+#resetBtn {
+  margin: 20px 0;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  background-color: #4CAF50;
+  color: white;
+  border-radius: 5px;
+}
+
+#resetBtn:hover {
+  background-color: #45a049;
+}
+
+/* 棋盤佈局 */
 #board {
   display: grid;
-  grid-template-columns: repeat(15, 30px);
+  grid-template-columns: repeat(15, 30px);  /* 這裡可以根據需要調整棋盤大小 */
   grid-template-rows: repeat(15, 30px);
   gap: 1px;
   margin: 20px 0;
 }
 
+/* 每個格子的樣式 */
 .cell {
   width: 30px;
   height: 30px;
@@ -23,6 +51,7 @@ body {
   cursor: pointer;
 }
 
+/* 黑棋和白棋的樣式 */
 .cell.black::after,
 .cell.white::after {
   content: "";
