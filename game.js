@@ -7,6 +7,9 @@ import {
   onValue
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
+// 設置棋盤大小為 19 (可以改為其他數字)
+const BOARD_SIZE = 19;
+
 const firebaseConfig = {
   apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
   authDomain: "gomoku-58c73.firebaseapp.com",
@@ -22,9 +25,9 @@ const app = initializeApp(firebaseConfig);
 // ⚠️ 使用正確區域的 Database URL
 const database = getDatabase(app, "https://gomoku-58c73-default-rtdb.firebaseio.com/");
 
-// 建立初始 15x15 棋盤
+// 建立初始棋盤，根據 BOARD_SIZE 來設置棋盤大小
 function createEmptyBoard() {
-  return Array.from({ length: 15 }, () => Array(15).fill(0));
+  return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
 // 寫入資料
@@ -37,11 +40,11 @@ function renderBoard(board) {
   const boardDiv = document.getElementById("board");
   boardDiv.innerHTML = "";
 
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < BOARD_SIZE; i++) {
     const row = document.createElement("div");
     row.className = "row";
 
-    for (let j = 0; j < 15; j++) {
+    for (let j = 0; j < BOARD_SIZE; j++) {
       const cell = document.createElement("div");
       cell.className = "cell";
       if (board[i][j] === 1) cell.classList.add("black");
@@ -67,8 +70,8 @@ function checkWin() {
     { x: 1, y: -1 }, // 斜對角（右上到左下）
   ];
 
-  for (let i = 0; i < 15; i++) {
-    for (let j = 0; j < 15; j++) {
+  for (let i = 0; i < BOARD_SIZE; i++) {
+    for (let j = 0; j < BOARD_SIZE; j++) {
       const player = board[i][j];
       if (player === 0) continue;  // 如果該位置是空的，跳過
 
@@ -80,7 +83,7 @@ function checkWin() {
         for (let k = 1; k < 5; k++) {
           const ni = i + x * k;
           const nj = j + y * k;
-          if (ni >= 0 && ni < 15 && nj >= 0 && nj < 15 && board[ni][nj] === player) {
+          if (ni >= 0 && ni < BOARD_SIZE && nj >= 0 && nj < BOARD_SIZE && board[ni][nj] === player) {
             count++;
           } else {
             break;
@@ -91,7 +94,7 @@ function checkWin() {
         for (let k = 1; k < 5; k++) {
           const ni = i - x * k;
           const nj = j - y * k;
-          if (ni >= 0 && ni < 15 && nj >= 0 && nj < 15 && board[ni][nj] === player) {
+          if (ni >= 0 && ni < BOARD_SIZE && nj >= 0 && nj < BOARD_SIZE && board[ni][nj] === player) {
             count++;
           } else {
             break;
