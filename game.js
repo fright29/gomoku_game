@@ -1,4 +1,3 @@
-// 導入 Firebase 9 的模組化 SDK
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
@@ -11,7 +10,7 @@ const firebaseConfig = {
   messagingSenderId: "468039195363",
   appId: "1:468039195363:web:9e1957dd49eb27e1e003d6",
   measurementId: "G-8EB69LG6JQ",
-  databaseURL: "https://gomoku-58c73-default-rtdb.asia-southeast1.firebasedatabase.app"
+  databaseURL: "https://gomoku-58c73-default-rtdb.firebaseio.com"
 };
 
 // 初始化 Firebase
@@ -41,11 +40,11 @@ const createBoard = () => {
 
 // 處理棋格點擊事件
 const handleCellClick = (e) => {
-  const row = e.target.dataset.row;
-  const col = e.target.dataset.col;
+  const row = parseInt(e.target.dataset.row, 10);
+  const col = parseInt(e.target.dataset.col, 10);
 
   // 如果該位置已經有棋子，則不進行操作
-  if (gameState[row][col]) return;
+  if (gameState[row] && gameState[row][col]) return;
 
   // 更新棋盤狀態
   gameState[row][col] = currentPlayer;
@@ -53,7 +52,7 @@ const handleCellClick = (e) => {
 
   // 儲存到 Firebase
   set(boardRef, gameState);
-  
+
   // 切換玩家
   currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
   update(gameRef, { currentPlayer });
@@ -87,13 +86,18 @@ onValue(boardRef, (snapshot) => {
 
 // 更新棋盤顯示
 const renderBoard = () => {
+  if (!gameState || !Array.isArray(gameState)) {
+    console.error('Game state is invalid:', gameState);
+    return;
+  }
+
   const boardElement = document.getElementById('board');
   const cells = boardElement.getElementsByClassName('cell');
   for (let row = 0; row < 15; row++) {
     for (let col = 0; col < 15; col++) {
       const cell = cells[row * 15 + col];
       cell.classList.remove('black', 'white');
-      if (gameState[row][col]) {
+      if (gameState[row] && gameState[row][col]) {
         cell.classList.add(gameState[row][col]);
       }
     }
