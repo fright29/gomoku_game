@@ -8,7 +8,7 @@ import {
   onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-// ⚙️ 棋盤大小
+// ⚙️ 改這裡控制棋盤大小
 const BOARD_SIZE = 30;
 document.documentElement.style.setProperty('--board-size', BOARD_SIZE);
 
@@ -30,8 +30,8 @@ function createEmptyBoard() {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
-function writeGameState(board, currentPlayer, players) {
-  set(gameStateRef, { board, currentPlayer, players });
+function writeGameState(board, currentPlayer, players, winner = null) {
+  set(gameStateRef, { board, currentPlayer, players, winner });
 }
 
 function renderBoard(board) {
@@ -56,8 +56,9 @@ let board = createEmptyBoard();
 let assignedPlayer = null;
 let gameEnded = false;
 let players = {};
+let lastWinner = null;
 
-// 產生唯一 playerId
+// 產生唯一 playerId（保存在 localStorage）
 let playerId = localStorage.getItem("playerId");
 if (!playerId) {
   playerId = crypto.randomUUID();
@@ -66,25 +67,34 @@ if (!playerId) {
 
 function checkWin(board, x, y, player) {
   const directions = [
-    [1, 0], [0, 1], [1, 1], [1, -1]
+    [1, 0],   // →
+    [0, 1],   // ↓
+    [1, 1],   // ↘
+    [1, -1]   // ↗
   ];
 
   for (const [dx, dy] of directions) {
     let count = 1;
+
     for (let i = 1; i < 5; i++) {
-      const nx = x + dx * i, ny = y + dy * i;
+      const nx = x + dx * i;
+      const ny = y + dy * i;
       if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
       if (board[nx][ny] === player) count++;
       else break;
     }
+
     for (let i = 1; i < 5; i++) {
-      const nx = x - dx * i, ny = y - dy * i;
+      const nx = x - dx * i;
+      const ny = y - dy * i;
       if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
       if (board[nx][ny] === player) count++;
       else break;
     }
+
     if (count >= 5) return true;
   }
+
   return false;
 }
 
@@ -92,73 +102,89 @@ function handleCellClick(i, j) {
   if (gameEnded || board[i][j] !== 0 || assignedPlayer !== currentPlayer) return;
 
   board[i][j] = currentPlayer;
+
   if (checkWin(board, i, j, currentPlayer)) {
-    alert(`玩家 ${currentPlayer} 勝利！`);
     gameEnded = true;
-    writeGameState(board, currentPlayer, players);
+    writeGameState(board, currentPlayer, players, currentPlayer);
+
+    if (assignedPlayer === currentPlayer) {
+      alert("你獲勝了！");
+    } else {
+      alert("你輸了！");
+    }
     return;
   }
 
   currentPlayer = currentPlayer === 1 ? 2 : 1;
-  writeGameState(board, currentPlayer, players);
+  writeGameState(board, currentPlayer, players, null);
 }
 
-// 🔄 嘗試指派玩家位置（新進或遞補）
-function tryAssignPlayer(players) {
-  if (assignedPlayer) return;
-
-  runTransaction(gameStateRef, (gameState) => {
-    if (!gameState) return gameState;
-
-    const currentPlayers = gameState.players || {};
-
-    if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
-      // 已有位置
-      return gameState;
-    }
-
-    if (!currentPlayers[1]) {
-      currentPlayers[1] = playerId;
-      assignedPlayer = 1;
-    } else if (!currentPlayers[2]) {
-      currentPlayers[2] = playerId;
-      assignedPlayer = 2;
-    }
-
-    gameState.players = currentPlayers;
-    return gameState;
-  }).then(() => {
-    if (assignedPlayer) {
-      const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
-      onDisconnect(playerSlotRef).remove();
-    }
-  });
-}
-
-// 🔁 Firebase 監聽
 onValue(gameStateRef, (snapshot) => {
   const data = snapshot.val();
+
   if (!data || !Array.isArray(data.board) || data.board.length !== BOARD_SIZE) {
     board = createEmptyBoard();
     currentPlayer = 1;
     players = {};
-    writeGameState(board, currentPlayer, players);
+    lastWinner = null;
+    writeGameState(board, currentPlayer, players, null);
     return;
   }
 
   board = data.board;
   currentPlayer = data.currentPlayer;
   players = data.players || {};
+  const winner = data.winner || null;
 
-  // 若未分配，嘗試分配或遞補
+  // 註冊玩家身份（只做一次）
   if (!assignedPlayer) {
-    if (players[1] === playerId) assignedPlayer = 1;
-    else if (players[2] === playerId) assignedPlayer = 2;
-    else tryAssignPlayer(players);
+    runTransaction(gameStateRef, (gameState) => {
+      if (!gameState) return gameState;
+      const currentPlayers = gameState.players || {};
+
+      if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
+        return gameState; // 已註冊
+      }
+
+      if (!currentPlayers[1]) {
+        currentPlayers[1] = playerId;
+        assignedPlayer = 1;
+      } else if (!currentPlayers[2]) {
+        currentPlayers[2] = playerId;
+        assignedPlayer = 2;
+      } else {
+        assignedPlayer = null;
+      }
+
+      gameState.players = currentPlayers;
+      return gameState;
+    }).then(() => {
+      if (assignedPlayer !== null) {
+        const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
+        onDisconnect(playerSlotRef).remove();
+      }
+    });
   }
+
+  // 若已有指派過，重設本地記錄
+  if (players[1] === playerId) assignedPlayer = 1;
+  else if (players[2] === playerId) assignedPlayer = 2;
 
   renderBoard(board);
   updateStatusText();
+
+  // 勝負通知：僅顯示一次
+  if (winner && !gameEnded && winner !== lastWinner) {
+    gameEnded = true;
+    lastWinner = winner;
+    if (assignedPlayer === winner) {
+      alert("你獲勝了！");
+    } else if (assignedPlayer === 1 || assignedPlayer === 2) {
+      alert("你輸了！");
+    } else {
+      alert(`玩家 ${winner} 獲勝！`);
+    }
+  }
 });
 
 function updateStatusText() {
@@ -177,15 +203,16 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   currentPlayer = 1;
   gameEnded = false;
   players = {};
-  writeGameState(board, currentPlayer, players);
+  lastWinner = null;
+  writeGameState(board, currentPlayer, players, null);
 });
 
-// ✅ 手動清空棋盤
 window.resetBoardSize = () => {
   const emptyBoard = createEmptyBoard();
   set(gameStateRef, {
     board: emptyBoard,
     currentPlayer: 1,
-    players: {}
+    players: {},
+    winner: null
   });
 };
