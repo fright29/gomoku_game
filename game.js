@@ -140,7 +140,7 @@ onValue(gameStateRef, (snapshot) => {
         return gameState; // 玩家已經有註冊，返回現有的遊戲狀態
       }
 
-      // 選擇一個空位
+      // 如果玩家1或玩家2沒註冊，給予空位
       if (!currentPlayers[1]) {
         currentPlayers[1] = playerId;
         assignedPlayer = 1;
@@ -157,7 +157,6 @@ onValue(gameStateRef, (snapshot) => {
     }).then(() => {
       // 當事務成功提交後，進一步處理
       if (assignedPlayer !== null) {
-        // 確保註冊玩家不會重複
         const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
         onDisconnect(playerSlotRef).remove();
       }
