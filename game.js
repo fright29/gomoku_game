@@ -12,6 +12,7 @@ import {
 const BOARD_SIZE = 30;
 document.documentElement.style.setProperty('--board-size', BOARD_SIZE);
 
+// Firebase 初始化
 const firebaseConfig = {
   apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
   authDomain: "gomoku-58c73.firebaseapp.com",
@@ -51,6 +52,7 @@ function renderBoard(board) {
   }
 }
 
+// 狀態變數
 let currentPlayer = 1;
 let board = createEmptyBoard();
 let assignedPlayer = null;
@@ -58,13 +60,14 @@ let gameEnded = false;
 let players = {};
 let lastWinner = null;
 
-// 產生唯一 playerId（保存在 localStorage）
+// 玩家唯一 ID
 let playerId = localStorage.getItem("playerId");
 if (!playerId) {
   playerId = crypto.randomUUID();
   localStorage.setItem("playerId", playerId);
 }
 
+// 勝利判斷
 function checkWin(board, x, y, player) {
   const directions = [
     [1, 0],   // →
@@ -98,6 +101,7 @@ function checkWin(board, x, y, player) {
   return false;
 }
 
+// 點擊處理
 function handleCellClick(i, j) {
   if (gameEnded || board[i][j] !== 0 || assignedPlayer !== currentPlayer) return;
 
@@ -119,6 +123,7 @@ function handleCellClick(i, j) {
   writeGameState(board, currentPlayer, players, null);
 }
 
+// Firebase 監聽
 onValue(gameStateRef, (snapshot) => {
   const data = snapshot.val();
 
@@ -136,14 +141,14 @@ onValue(gameStateRef, (snapshot) => {
   players = data.players || {};
   const winner = data.winner || null;
 
-  // 註冊玩家身份（只做一次）
+  // 玩家身份註冊
   if (!assignedPlayer) {
     runTransaction(gameStateRef, (gameState) => {
       if (!gameState) return gameState;
       const currentPlayers = gameState.players || {};
 
       if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
-        return gameState; // 已註冊
+        return gameState;
       }
 
       if (!currentPlayers[1]) {
@@ -166,14 +171,14 @@ onValue(gameStateRef, (snapshot) => {
     });
   }
 
-  // 若已有指派過，重設本地記錄
+  // 如果已經指派過
   if (players[1] === playerId) assignedPlayer = 1;
   else if (players[2] === playerId) assignedPlayer = 2;
 
   renderBoard(board);
   updateStatusText();
 
-  // 勝負通知：僅顯示一次
+  // 顯示勝負通知
   if (winner && !gameEnded && winner !== lastWinner) {
     gameEnded = true;
     lastWinner = winner;
@@ -187,17 +192,26 @@ onValue(gameStateRef, (snapshot) => {
   }
 });
 
+// 狀態更新文字
 function updateStatusText() {
   const statusDiv = document.getElementById("status");
+
+  const bothPlayersReady = players[1] && players[2];
+
   if (assignedPlayer === 1 || assignedPlayer === 2) {
-    statusDiv.innerText = currentPlayer === assignedPlayer
-      ? `你是玩家 ${assignedPlayer}，輪到你下棋`
-      : `你是玩家 ${assignedPlayer}，等待對手...`;
+    if (!bothPlayersReady) {
+      statusDiv.innerText = `你是玩家 ${assignedPlayer}，等待另一位玩家加入...`;
+    } else {
+      statusDiv.innerText = currentPlayer === assignedPlayer
+        ? `你是玩家 ${assignedPlayer}，輪到你下棋`
+        : `你是玩家 ${assignedPlayer}，等待對手...`;
+    }
   } else {
     statusDiv.innerText = "觀戰模式";
   }
 }
 
+// 重置按鈕
 document.getElementById("resetBtn").addEventListener("click", () => {
   board = createEmptyBoard();
   currentPlayer = 1;
@@ -207,6 +221,7 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   writeGameState(board, currentPlayer, players, null);
 });
 
+// 提供手動重設函數（例如透過 console 呼叫）
 window.resetBoardSize = () => {
   const emptyBoard = createEmptyBoard();
   set(gameStateRef, {
