@@ -8,11 +8,9 @@ import {
   onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-// ⚙️ 改這裡控制棋盤大小
 const BOARD_SIZE = 30;
 document.documentElement.style.setProperty('--board-size', BOARD_SIZE);
 
-// Firebase 初始化
 const firebaseConfig = {
   apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
   authDomain: "gomoku-58c73.firebaseapp.com",
@@ -52,7 +50,6 @@ function renderBoard(board) {
   }
 }
 
-// 狀態變數
 let currentPlayer = 1;
 let board = createEmptyBoard();
 let assignedPlayer = null;
@@ -61,20 +58,15 @@ let players = {};
 let lastWinner = null;
 let firstPlayer = 1;
 
-// 玩家唯一 ID
 let playerId = localStorage.getItem("playerId");
 if (!playerId) {
   playerId = crypto.randomUUID();
   localStorage.setItem("playerId", playerId);
 }
 
-// 勝利判斷
 function checkWin(board, x, y, player) {
   const directions = [
-    [1, 0],   // →
-    [0, 1],   // ↓
-    [1, 1],   // ↘
-    [1, -1]   // ↗
+    [1, 0], [0, 1], [1, 1], [1, -1]
   ];
 
   for (const [dx, dy] of directions) {
@@ -98,13 +90,10 @@ function checkWin(board, x, y, player) {
 
     if (count >= 5) return true;
   }
-
   return false;
 }
 
-// 點擊處理
 function handleCellClick(i, j) {
-  // 檢查是否遊戲結束，或者該位置已經被佔用，或者玩家未輪到，或者尚未兩位玩家都加入
   if (gameEnded || board[i][j] !== 0 || assignedPlayer !== currentPlayer || !players[1] || !players[2]) return;
 
   board[i][j] = currentPlayer;
@@ -112,12 +101,7 @@ function handleCellClick(i, j) {
   if (checkWin(board, i, j, currentPlayer)) {
     gameEnded = true;
     writeGameState(board, currentPlayer, players, currentPlayer, firstPlayer);
-
-    if (assignedPlayer === currentPlayer) {
-      alert("你獲勝了！");
-    } else {
-      alert("你輸了！");
-    }
+    alert(assignedPlayer === currentPlayer ? "你獲勝了！" : "你輸了！");
     return;
   }
 
@@ -125,7 +109,6 @@ function handleCellClick(i, j) {
   writeGameState(board, currentPlayer, players, null, firstPlayer);
 }
 
-// Firebase 監聽
 onValue(gameStateRef, (snapshot) => {
   const data = snapshot.val();
 
@@ -145,30 +128,25 @@ onValue(gameStateRef, (snapshot) => {
   const winner = data.winner || null;
   firstPlayer = data.firstPlayer || 1;
 
-  // 玩家身份註冊
   if (!assignedPlayer) {
     runTransaction(gameStateRef, (gameState) => {
       if (!gameState) return gameState;
       const currentPlayers = gameState.players || {};
 
-      if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
-        return gameState;
-      }
-
       if (!currentPlayers[1]) {
         currentPlayers[1] = playerId;
-        assignedPlayer = 1;
       } else if (!currentPlayers[2]) {
         currentPlayers[2] = playerId;
-        assignedPlayer = 2;
-      } else {
-        assignedPlayer = null;
       }
 
       gameState.players = currentPlayers;
       return gameState;
-    }).then(() => {
-      if (assignedPlayer !== null) {
+    }).then((result) => {
+      const finalPlayers = result.snapshot.val().players || {};
+      if (finalPlayers[1] === playerId) assignedPlayer = 1;
+      else if (finalPlayers[2] === playerId) assignedPlayer = 2;
+
+      if (assignedPlayer) {
         const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
         onDisconnect(playerSlotRef).remove();
       }
@@ -194,7 +172,6 @@ onValue(gameStateRef, (snapshot) => {
   }
 });
 
-// 狀態更新文字
 function updateStatusText() {
   const statusDiv = document.getElementById("status");
   const bothPlayersReady = players[1] && players[2];
@@ -213,7 +190,6 @@ function updateStatusText() {
   }
 }
 
-// 重置按鈕
 document.getElementById("resetBtn").addEventListener("click", () => {
   board = createEmptyBoard();
   currentPlayer = Math.random() < 0.5 ? 1 : 2;
@@ -224,7 +200,6 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   writeGameState(board, currentPlayer, players, null, firstPlayer);
 });
 
-// 提供手動重設函數（例如透過 console 呼叫）
 window.resetBoardSize = () => {
   const emptyBoard = createEmptyBoard();
   firstPlayer = Math.random() < 0.5 ? 1 : 2;
