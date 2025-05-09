@@ -1,3 +1,4 @@
+// 初始化 Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
   getDatabase,
@@ -6,7 +7,7 @@ import {
   onValue
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-// === ✅ 棋盤大小，只改這行就好 ===
+// ⚙️ 改這裡控制棋盤大小
 const BOARD_SIZE = 30;
 document.documentElement.style.setProperty('--board-size', BOARD_SIZE);
 
@@ -27,8 +28,8 @@ function createEmptyBoard() {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
-function writeGameState(board, currentPlayer, winner = 0) {
-  set(ref(database, "gameState"), { board, currentPlayer, winner });
+function writeGameState(board, currentPlayer) {
+  set(ref(database, "gameState"), { board, currentPlayer });
 }
 
 function renderBoard(board) {
@@ -50,69 +51,76 @@ function renderBoard(board) {
 
 let currentPlayer = 1;
 let board = createEmptyBoard();
-let winner = 0;
 
-function handleCellClick(i, j) {
-  if (board[i][j] !== 0 || winner !== 0) return;
-  board[i][j] = currentPlayer;
-
-  if (checkWin(i, j, currentPlayer)) {
-    winner = currentPlayer;
-    alert(`玩家 ${currentPlayer} 勝利！`);
-  } else {
-    currentPlayer = currentPlayer === 1 ? 2 : 1;
-  }
-
-  writeGameState(board, currentPlayer, winner);
-}
-
-// 檢查勝利條件（八方向任五連線）
-function checkWin(x, y, player) {
+// 檢查五子連線
+function checkWin(board, x, y, player) {
   const directions = [
-    [1, 0], [0, 1], [1, 1], [1, -1]
+    [1, 0],   // →
+    [0, 1],   // ↓
+    [1, 1],   // ↘
+    [1, -1]   // ↗
   ];
 
   for (const [dx, dy] of directions) {
     let count = 1;
-    for (let dir = -1; dir <= 1; dir += 2) {
-      let nx = x + dx * dir;
-      let ny = y + dy * dir;
-      while (
-        nx >= 0 && ny >= 0 && nx < BOARD_SIZE && ny < BOARD_SIZE &&
-        board[nx][ny] === player
-      ) {
-        count++;
-        nx += dx * dir;
-        ny += dy * dir;
-      }
+
+    // 向正方向延伸
+    for (let i = 1; i < 5; i++) {
+      const nx = x + dx * i;
+      const ny = y + dy * i;
+      if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
+      if (board[nx][ny] === player) count++;
+      else break;
     }
+
+    // 向反方向延伸
+    for (let i = 1; i < 5; i++) {
+      const nx = x - dx * i;
+      const ny = y - dy * i;
+      if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
+      if (board[nx][ny] === player) count++;
+      else break;
+    }
+
     if (count >= 5) return true;
   }
+
   return false;
 }
 
-// 從 Firebase 同步
+function handleCellClick(i, j) {
+  if (board[i][j] !== 0) return;
+  board[i][j] = currentPlayer;
+
+  if (checkWin(board, i, j, currentPlayer)) {
+    alert(`玩家 ${currentPlayer} 勝利！`);
+    board = createEmptyBoard();
+    currentPlayer = 1;
+    writeGameState(board, currentPlayer);
+    return;
+  }
+
+  currentPlayer = currentPlayer === 1 ? 2 : 1;
+  writeGameState(board, currentPlayer);
+}
+
 onValue(ref(database, "gameState"), (snapshot) => {
   const data = snapshot.val();
   if (!data) {
     board = createEmptyBoard();
     currentPlayer = 1;
-    winner = 0;
-    writeGameState(board, currentPlayer, winner);
+    writeGameState(board, currentPlayer);
   } else if (!Array.isArray(data.board)) {
-    console.warn("Game state is invalid:", data);
+    console.warn("Game state is invalid: ", data);
   } else {
     board = data.board;
     currentPlayer = data.currentPlayer;
-    winner = data.winner || 0;
     renderBoard(board);
   }
 });
 
-// 重設按鈕
 document.getElementById("resetBtn").addEventListener("click", () => {
   board = createEmptyBoard();
   currentPlayer = 1;
-  winner = 0;
-  writeGameState(board, currentPlayer, winner);
+  writeGameState(board, currentPlayer);
 });
