@@ -137,10 +137,12 @@ onValue(gameStateRef, (snapshot) => {
 
       const currentPlayers = gameState.players || {};
 
+      // 確保玩家 1 和玩家 2 只會有一個註冊
       if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
-        return gameState;
+        return gameState; // 玩家已經有註冊，返回現有的遊戲狀態
       }
 
+      // 選擇一個空位
       if (!currentPlayers[1]) {
         currentPlayers[1] = playerId;
         assignedPlayer = 1;
@@ -148,6 +150,7 @@ onValue(gameStateRef, (snapshot) => {
         currentPlayers[2] = playerId;
         assignedPlayer = 2;
       } else {
+        // 如果兩個玩家都已經註冊，則不做更動
         assignedPlayer = null;
       }
 
@@ -198,4 +201,3 @@ window.resetBoardSize = () => {
     players: {}
   });
 };
-``
