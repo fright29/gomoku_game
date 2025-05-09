@@ -6,7 +6,8 @@ import {
   set,
   onValue,
   update,
-  runTransaction
+  runTransaction,
+  onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 // ⚙️ 改這裡控制棋盤大小
@@ -159,6 +160,12 @@ onValue(gameStateRef, (snapshot) => {
   if (players[1] === playerId) assignedPlayer = 1;
   else if (players[2] === playerId) assignedPlayer = 2;
 
+  // 玩家斷線時自動清除
+  if (assignedPlayer !== null) {
+    const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
+    onDisconnect(playerSlotRef).remove();
+  }
+
   renderBoard(board);
   updateStatusText();
 });
@@ -191,3 +198,4 @@ window.resetBoardSize = () => {
     players: {}
   });
 };
+``
