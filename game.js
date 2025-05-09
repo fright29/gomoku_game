@@ -7,7 +7,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 // === ✅ 棋盤大小，只改這行就好 ===
-const BOARD_SIZE = 15;
+const BOARD_SIZE = 30;
 document.documentElement.style.setProperty('--board-size', BOARD_SIZE);
 
 const firebaseConfig = {
