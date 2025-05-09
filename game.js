@@ -5,7 +5,8 @@ import {
   ref,
   set,
   onValue,
-  update
+  update,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 // ⚙️ 改這裡控制棋盤大小
@@ -55,6 +56,14 @@ let currentPlayer = 1;
 let board = createEmptyBoard();
 let assignedPlayer = null;
 let gameEnded = false;
+let players = {};
+
+// 產生唯一 playerId（保存在 localStorage）
+let playerId = localStorage.getItem("playerId");
+if (!playerId) {
+  playerId = crypto.randomUUID();
+  localStorage.setItem("playerId", playerId);
+}
 
 function checkWin(board, x, y, player) {
   const directions = [
@@ -105,15 +114,6 @@ function handleCellClick(i, j) {
   writeGameState(board, currentPlayer, players);
 }
 
-// 產生唯一 playerId（保存在 localStorage）
-let playerId = localStorage.getItem("playerId");
-if (!playerId) {
-  playerId = crypto.randomUUID();
-  localStorage.setItem("playerId", playerId);
-}
-
-let players = {};
-
 onValue(gameStateRef, (snapshot) => {
   const data = snapshot.val();
 
@@ -129,22 +129,35 @@ onValue(gameStateRef, (snapshot) => {
   currentPlayer = data.currentPlayer;
   players = data.players || {};
 
-  // 指派玩家：新增補位邏輯
-  if (players[1] === playerId) {
-    assignedPlayer = 1;
-  } else if (players[2] === playerId) {
-    assignedPlayer = 2;
-  } else if (!players[1]) {
-    players[1] = playerId;
-    assignedPlayer = 1;
-    update(gameStateRef, { players });
-  } else if (!players[2]) {
-    players[2] = playerId;
-    assignedPlayer = 2;
-    update(gameStateRef, { players });
-  } else {
-    assignedPlayer = null;
+  // 使用 transaction 安全指派玩家身份
+  if (!assignedPlayer) {
+    runTransaction(gameStateRef, (gameState) => {
+      if (!gameState) return gameState;
+
+      const currentPlayers = gameState.players || {};
+
+      if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
+        return gameState;
+      }
+
+      if (!currentPlayers[1]) {
+        currentPlayers[1] = playerId;
+        assignedPlayer = 1;
+      } else if (!currentPlayers[2]) {
+        currentPlayers[2] = playerId;
+        assignedPlayer = 2;
+      } else {
+        assignedPlayer = null;
+      }
+
+      gameState.players = currentPlayers;
+      return gameState;
+    });
   }
+
+  // 若已有指派過，重設本地記錄
+  if (players[1] === playerId) assignedPlayer = 1;
+  else if (players[2] === playerId) assignedPlayer = 2;
 
   renderBoard(board);
   updateStatusText();
