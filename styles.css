@@ -27,6 +27,9 @@ h1 {
   gap: 1px;
   justify-content: center;
   margin: 10px auto;
+  overflow: auto;  /* 允許滾動 */
+  max-width: 100%; /* 限制棋盤的最大寬度 */
+  max-height: 90vh; /* 限制棋盤的最大高度 */
 }
 
 .cell {
@@ -54,4 +57,16 @@ button {
   font-size: 16px;
   margin-top: 10px;
   cursor: pointer;
+}
+
+/* 手機上的樣式調整 */
+@media (max-width: 600px) {
+  .board {
+    grid-template-columns: repeat(var(--board-size), 20px); /* 減小格子大小 */
+    grid-template-rows: repeat(var(--board-size), 20px);
+  }
+  .cell {
+    width: 20px;
+    height: 20px;
+  }
 }
