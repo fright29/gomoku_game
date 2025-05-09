@@ -104,7 +104,8 @@ function checkWin(board, x, y, player) {
 
 // 點擊處理
 function handleCellClick(i, j) {
-  if (gameEnded || board[i][j] !== 0 || assignedPlayer !== currentPlayer) return;
+  // 檢查是否遊戲結束，或者該位置已經被佔用，或者玩家未輪到，或者尚未兩位玩家都加入
+  if (gameEnded || board[i][j] !== 0 || assignedPlayer !== currentPlayer || !players[1] || !players[2]) return;
 
   board[i][j] = currentPlayer;
 
