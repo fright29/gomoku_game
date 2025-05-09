@@ -1,58 +1,57 @@
 :root {
-  --board-size: 15;
+  --board-size: 15; /* 預設 15x15，可以透過 JS 設定改變 */
 }
 
 body {
-  font-family: sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 20px;
-  padding: 0 10px;
-  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: #f0f0f0;
+  margin: 0;
+  padding: 20px;
 }
 
-#board {
+h1 {
+  margin-bottom: 10px;
+}
+
+#status {
+  font-weight: bold;
+  margin: 10px 0;
+  font-size: 18px;
+}
+
+.board {
   display: grid;
   grid-template-columns: repeat(var(--board-size), 30px);
   grid-template-rows: repeat(var(--board-size), 30px);
   gap: 1px;
-  margin: 20px 0;
-  overflow-x: auto;
-  max-width: 100%;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  justify-content: center;
+  margin: 10px auto;
 }
 
 .cell {
   width: 30px;
   height: 30px;
-  background-color: #f0d9b5;
-  border: 1px solid #888;
+  background-color: #ffe;
+  border: 1px solid #ccc;
   box-sizing: border-box;
   cursor: pointer;
 }
 
-.cell.black::after,
-.cell.white::after {
-  content: "";
-  display: block;
-  width: 24px;
-  height: 24px;
-  margin: 2px auto;
+.cell.black {
+  background-color: black;
   border-radius: 50%;
 }
 
-.cell.black::after {
-  background-color: black;
-}
-
-.cell.white::after {
+.cell.white {
   background-color: white;
-  border: 1px solid #000;
+  border-radius: 50%;
+  border: 1px solid #ccc;
 }
 
-#status {
-  font-size: 18px;
-  font-weight: bold;
+button {
+  padding: 10px 20px;
+  font-size: 16px;
   margin-top: 10px;
+  cursor: pointer;
 }
