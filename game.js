@@ -28,8 +28,8 @@ function createEmptyBoard() {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
-function writeGameState(board, currentPlayer) {
-  set(ref(database, "gameState"), { board, currentPlayer });
+function writeGameState(board, currentPlayer, isGameOver = false) {
+  set(ref(database, "gameState"), { board, currentPlayer, isGameOver });
 }
 
 function renderBoard(board) {
@@ -51,13 +51,24 @@ function renderBoard(board) {
 
 let currentPlayer = 1;
 let board = createEmptyBoard();
+let isGameOver = false;
+let localPlayer = Math.random() < 0.5 ? 1 : 2;
 
+function updateStatus() {
+  const statusDiv = document.getElementById("status");
+  if (isGameOver) {
+    statusDiv.textContent = "遊戲已結束。請按重置重新開始。";
+  } else if (currentPlayer === localPlayer) {
+    statusDiv.textContent = `輪到你下棋（你是玩家 ${localPlayer}）`;
+  } else {
+    statusDiv.textContent = `等待對方下棋（你是玩家 ${localPlayer}）`;
+  }
+}
+
+// 檢查五子連線
 function checkWin(board, x, y, player) {
   const directions = [
-    [1, 0],   // →
-    [0, 1],   // ↓
-    [1, 1],   // ↘
-    [1, -1]   // ↗
+    [1, 0], [0, 1], [1, 1], [1, -1]
   ];
 
   for (const [dx, dy] of directions) {
@@ -86,39 +97,47 @@ function checkWin(board, x, y, player) {
 }
 
 function handleCellClick(i, j) {
-  if (board[i][j] !== 0) return;
+  if (board[i][j] !== 0 || isGameOver || currentPlayer !== localPlayer) return;
+
   board[i][j] = currentPlayer;
 
   if (checkWin(board, i, j, currentPlayer)) {
     alert(`玩家 ${currentPlayer} 勝利！`);
-    board = createEmptyBoard();
-    currentPlayer = 1;
-    writeGameState(board, currentPlayer);
+    isGameOver = true;
+    writeGameState(board, currentPlayer, isGameOver);
     return;
   }
 
   currentPlayer = currentPlayer === 1 ? 2 : 1;
-  writeGameState(board, currentPlayer);
+  writeGameState(board, currentPlayer, false);
 }
 
 onValue(ref(database, "gameState"), (snapshot) => {
   const data = snapshot.val();
-  if (!data || !Array.isArray(data.board) || data.board.length !== BOARD_SIZE) {
+  if (
+    !data ||
+    !Array.isArray(data.board) ||
+    data.board.length !== BOARD_SIZE
+  ) {
     console.warn("初始化或不符，重建棋盤");
     board = createEmptyBoard();
     currentPlayer = 1;
-    writeGameState(board, currentPlayer);
+    isGameOver = false;
+    writeGameState(board, currentPlayer, isGameOver);
   } else {
     board = data.board;
     currentPlayer = data.currentPlayer;
+    isGameOver = !!data.isGameOver;
     renderBoard(board);
+    updateStatus();
   }
 });
 
 document.getElementById("resetBtn").addEventListener("click", () => {
   board = createEmptyBoard();
   currentPlayer = 1;
-  writeGameState(board, currentPlayer);
+  isGameOver = false;
+  writeGameState(board, currentPlayer, isGameOver);
 });
 
 // ✅ 開發者工具用：手動重設 Firebase 裡的棋盤尺寸
@@ -126,6 +145,7 @@ window.resetBoardSize = () => {
   const emptyBoard = createEmptyBoard();
   set(ref(database, "gameState"), {
     board: emptyBoard,
-    currentPlayer: 1
+    currentPlayer: 1,
+    isGameOver: false
   });
 };
