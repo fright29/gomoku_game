@@ -52,7 +52,6 @@ function renderBoard(board) {
 let currentPlayer = 1;
 let board = createEmptyBoard();
 
-// 檢查五子連線
 function checkWin(board, x, y, player) {
   const directions = [
     [1, 0],   // →
@@ -64,7 +63,6 @@ function checkWin(board, x, y, player) {
   for (const [dx, dy] of directions) {
     let count = 1;
 
-    // 向正方向延伸
     for (let i = 1; i < 5; i++) {
       const nx = x + dx * i;
       const ny = y + dy * i;
@@ -73,7 +71,6 @@ function checkWin(board, x, y, player) {
       else break;
     }
 
-    // 向反方向延伸
     for (let i = 1; i < 5; i++) {
       const nx = x - dx * i;
       const ny = y - dy * i;
@@ -106,12 +103,11 @@ function handleCellClick(i, j) {
 
 onValue(ref(database, "gameState"), (snapshot) => {
   const data = snapshot.val();
-  if (!data) {
+  if (!data || !Array.isArray(data.board) || data.board.length !== BOARD_SIZE) {
+    console.warn("初始化或不符，重建棋盤");
     board = createEmptyBoard();
     currentPlayer = 1;
     writeGameState(board, currentPlayer);
-  } else if (!Array.isArray(data.board)) {
-    console.warn("Game state is invalid: ", data);
   } else {
     board = data.board;
     currentPlayer = data.currentPlayer;
@@ -124,3 +120,12 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   currentPlayer = 1;
   writeGameState(board, currentPlayer);
 });
+
+// ✅ 開發者工具用：手動重設 Firebase 裡的棋盤尺寸
+window.resetBoardSize = () => {
+  const emptyBoard = createEmptyBoard();
+  set(ref(database, "gameState"), {
+    board: emptyBoard,
+    currentPlayer: 1
+  });
+};
