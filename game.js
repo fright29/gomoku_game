@@ -1,11 +1,9 @@
-// 初始化 Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
   getDatabase,
   ref,
   set,
   onValue,
-  update,
   runTransaction,
   onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -156,18 +154,19 @@ onValue(gameStateRef, (snapshot) => {
 
       gameState.players = currentPlayers;
       return gameState;
+    }).then(() => {
+      // 當事務成功提交後，進一步處理
+      if (assignedPlayer !== null) {
+        // 確保註冊玩家不會重複
+        const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
+        onDisconnect(playerSlotRef).remove();
+      }
     });
   }
 
   // 若已有指派過，重設本地記錄
   if (players[1] === playerId) assignedPlayer = 1;
   else if (players[2] === playerId) assignedPlayer = 2;
-
-  // 玩家斷線時自動清除
-  if (assignedPlayer !== null) {
-    const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
-    onDisconnect(playerSlotRef).remove();
-  }
 
   renderBoard(board);
   updateStatusText();
