@@ -31,8 +31,8 @@ function createEmptyBoard() {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
-function writeGameState(board, currentPlayer, players, winner = null) {
-  set(gameStateRef, { board, currentPlayer, players, winner });
+function writeGameState(board, currentPlayer, players, winner = null, firstPlayer = null) {
+  set(gameStateRef, { board, currentPlayer, players, winner, firstPlayer });
 }
 
 function renderBoard(board) {
@@ -59,6 +59,7 @@ let assignedPlayer = null;
 let gameEnded = false;
 let players = {};
 let lastWinner = null;
+let firstPlayer = 1;
 
 // 玩家唯一 ID
 let playerId = localStorage.getItem("playerId");
@@ -109,7 +110,7 @@ function handleCellClick(i, j) {
 
   if (checkWin(board, i, j, currentPlayer)) {
     gameEnded = true;
-    writeGameState(board, currentPlayer, players, currentPlayer);
+    writeGameState(board, currentPlayer, players, currentPlayer, firstPlayer);
 
     if (assignedPlayer === currentPlayer) {
       alert("你獲勝了！");
@@ -120,7 +121,7 @@ function handleCellClick(i, j) {
   }
 
   currentPlayer = currentPlayer === 1 ? 2 : 1;
-  writeGameState(board, currentPlayer, players, null);
+  writeGameState(board, currentPlayer, players, null, firstPlayer);
 }
 
 // Firebase 監聽
@@ -132,7 +133,8 @@ onValue(gameStateRef, (snapshot) => {
     currentPlayer = 1;
     players = {};
     lastWinner = null;
-    writeGameState(board, currentPlayer, players, null);
+    firstPlayer = 1;
+    writeGameState(board, currentPlayer, players, null, firstPlayer);
     return;
   }
 
@@ -140,6 +142,7 @@ onValue(gameStateRef, (snapshot) => {
   currentPlayer = data.currentPlayer;
   players = data.players || {};
   const winner = data.winner || null;
+  firstPlayer = data.firstPlayer || 1;
 
   // 玩家身份註冊
   if (!assignedPlayer) {
@@ -171,14 +174,12 @@ onValue(gameStateRef, (snapshot) => {
     });
   }
 
-  // 如果已經指派過
   if (players[1] === playerId) assignedPlayer = 1;
   else if (players[2] === playerId) assignedPlayer = 2;
 
   renderBoard(board);
   updateStatusText();
 
-  // 顯示勝負通知
   if (winner && !gameEnded && winner !== lastWinner) {
     gameEnded = true;
     lastWinner = winner;
@@ -195,7 +196,6 @@ onValue(gameStateRef, (snapshot) => {
 // 狀態更新文字
 function updateStatusText() {
   const statusDiv = document.getElementById("status");
-
   const bothPlayersReady = players[1] && players[2];
 
   if (assignedPlayer === 1 || assignedPlayer === 2) {
@@ -206,6 +206,7 @@ function updateStatusText() {
         ? `你是玩家 ${assignedPlayer}，輪到你下棋`
         : `你是玩家 ${assignedPlayer}，等待對手...`;
     }
+    statusDiv.innerText += `（本局由玩家 ${firstPlayer} 先手）`;
   } else {
     statusDiv.innerText = "觀戰模式";
   }
@@ -214,20 +215,23 @@ function updateStatusText() {
 // 重置按鈕
 document.getElementById("resetBtn").addEventListener("click", () => {
   board = createEmptyBoard();
-  currentPlayer = 1;
+  currentPlayer = Math.random() < 0.5 ? 1 : 2;
+  firstPlayer = currentPlayer;
   gameEnded = false;
   players = {};
   lastWinner = null;
-  writeGameState(board, currentPlayer, players, null);
+  writeGameState(board, currentPlayer, players, null, firstPlayer);
 });
 
 // 提供手動重設函數（例如透過 console 呼叫）
 window.resetBoardSize = () => {
   const emptyBoard = createEmptyBoard();
+  firstPlayer = Math.random() < 0.5 ? 1 : 2;
   set(gameStateRef, {
     board: emptyBoard,
-    currentPlayer: 1,
+    currentPlayer: firstPlayer,
     players: {},
-    winner: null
+    winner: null,
+    firstPlayer
   });
 };
