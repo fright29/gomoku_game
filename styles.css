@@ -20,16 +20,19 @@ h1 {
   font-size: 18px;
 }
 
+.board-wrapper {
+  overflow: auto; /* 允許滾動 */
+  max-width: 100%; /* 限制最大寬度 */
+  margin: 10px auto;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(var(--board-size), 30px);
   grid-template-rows: repeat(var(--board-size), 30px);
   gap: 1px;
   justify-content: center;
-  margin: 10px auto;
-  overflow: auto;  /* 允許滾動 */
-  max-width: 100%; /* 限制棋盤的最大寬度 */
-  max-height: 90vh; /* 限制棋盤的最大高度 */
+  width: max-content; /* 使棋盤的寬度自動適應內容 */
 }
 
 .cell {
