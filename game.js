@@ -1,4 +1,3 @@
-// 初始化 Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
   getDatabase,
@@ -9,10 +8,11 @@ import {
   update
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-// ⚙️ 改這裡控制棋盤大小
+// ⚙️ 控制棋盤大小
 const BOARD_SIZE = 30;
 document.documentElement.style.setProperty('--board-size', BOARD_SIZE);
 
+// 🔐 Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyDq9OSvLB2KJBB-Mg5yTTdng3zJmI5XmXA",
   authDomain: "gomoku-58c73.firebaseapp.com",
@@ -25,19 +25,31 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app, "https://gomoku-58c73-default-rtdb.firebaseio.com/");
+const gameStateRef = ref(database, "gameState");
 
-const userId = localStorage.getItem('gomoku-user-id') || crypto.randomUUID();
-localStorage.setItem('gomoku-user-id', userId);
-let localPlayer = 0; // 1 = black, 2 = white, 0 = viewer
+// 🎮 玩家 ID（存在 localStorage 中，跨頁刷新仍保留）
+let playerId = localStorage.getItem("gomoku-player-id");
+if (!playerId) {
+  playerId = crypto.randomUUID();
+  localStorage.setItem("gomoku-player-id", playerId);
+}
 
+let currentPlayer = 1;
+let board = [];
+let gameOver = false;
+let assignedPlayer = null;
+
+// 建立空白棋盤
 function createEmptyBoard() {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
-function writeGameState(board, currentPlayer) {
-  set(ref(database, "gameState"), { board, currentPlayer });
+// 寫入狀態
+function writeGameState(board, currentPlayer, players, gameOver) {
+  set(gameStateRef, { board, currentPlayer, players, gameOver });
 }
 
+// 渲染棋盤
 function renderBoard(board) {
   const boardDiv = document.getElementById("board");
   boardDiv.innerHTML = "";
@@ -49,114 +61,127 @@ function renderBoard(board) {
       if (board[i][j] === 1) cell.classList.add("black");
       else if (board[i][j] === 2) cell.classList.add("white");
 
-      if (!gameOver && currentPlayer === localPlayer && board[i][j] === 0) {
-        cell.addEventListener("click", () => handleCellClick(i, j));
-      }
+      cell.addEventListener("click", () => handleCellClick(i, j));
       boardDiv.appendChild(cell);
     }
   }
 }
 
-let currentPlayer = 1;
-let board = createEmptyBoard();
-let gameOver = false;
-
+// 檢查五子連線
 function checkWin(board, x, y, player) {
   const directions = [
     [1, 0], [0, 1], [1, 1], [1, -1]
   ];
+
   for (const [dx, dy] of directions) {
     let count = 1;
     for (let i = 1; i < 5; i++) {
-      const nx = x + dx * i;
-      const ny = y + dy * i;
-      if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE || board[nx][ny] !== player) break;
-      count++;
+      const nx = x + dx * i, ny = y + dy * i;
+      if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
+      if (board[nx][ny] === player) count++;
+      else break;
     }
     for (let i = 1; i < 5; i++) {
-      const nx = x - dx * i;
-      const ny = y - dy * i;
-      if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE || board[nx][ny] !== player) break;
-      count++;
+      const nx = x - dx * i, ny = y - dy * i;
+      if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
+      if (board[nx][ny] === player) count++;
+      else break;
     }
     if (count >= 5) return true;
   }
   return false;
 }
 
+// 處理點擊
 function handleCellClick(i, j) {
-  if (board[i][j] !== 0 || gameOver) return;
+  if (gameOver) return;
+  if (!assignedPlayer || assignedPlayer !== currentPlayer) return;
+  if (board[i][j] !== 0) return;
+
   board[i][j] = currentPlayer;
 
-  if (checkWin(board, i, j, currentPlayer)) {
+  const win = checkWin(board, i, j, currentPlayer);
+  const nextPlayer = currentPlayer === 1 ? 2 : 1;
+
+  update(gameStateRef, {
+    board,
+    currentPlayer: win ? currentPlayer : nextPlayer,
+    gameOver: win
+  });
+
+  if (win) {
     alert(`玩家 ${currentPlayer} 勝利！`);
-    gameOver = true;
-    writeGameState(board, currentPlayer);
+  }
+}
+
+// 監聽 Firebase 資料
+onValue(gameStateRef, (snapshot) => {
+  const data = snapshot.val();
+
+  if (!data || !data.board || data.board.length !== BOARD_SIZE) {
+    const newBoard = createEmptyBoard();
+    const players = {
+      1: playerId,
+      2: null
+    };
+    writeGameState(newBoard, 1, players, false);
     return;
   }
 
-  currentPlayer = currentPlayer === 1 ? 2 : 1;
-  writeGameState(board, currentPlayer);
-}
+  board = data.board;
+  currentPlayer = data.currentPlayer;
+  gameOver = data.gameOver;
+  const players = data.players || {};
 
-// 玩家配對邏輯
-async function assignPlayer() {
-  const snapshot = await get(ref(database, "players"));
-  const players = snapshot.val() || {};
-
-  if (players.player1 === userId) localPlayer = 1;
-  else if (players.player2 === userId) localPlayer = 2;
-  else if (!players.player1) {
-    localPlayer = 1;
-    update(ref(database, "players"), { player1: userId });
-  } else if (!players.player2) {
-    localPlayer = 2;
-    update(ref(database, "players"), { player2: userId });
+  // 自動分配玩家編號
+  if (players[1] === playerId) assignedPlayer = 1;
+  else if (players[2] === playerId) assignedPlayer = 2;
+  else if (!players[2]) {
+    players[2] = playerId;
+    assignedPlayer = 2;
+    update(gameStateRef, { players });
   } else {
-    localPlayer = 0;
+    assignedPlayer = null;
   }
-  console.log(`你是玩家 ${localPlayer || '觀戰者'}`);
-}
 
-assignPlayer();
-
-onValue(ref(database, "gameState"), (snapshot) => {
-  const data = snapshot.val();
-  if (!data || !Array.isArray(data.board) || data.board.length !== BOARD_SIZE) {
-    board = createEmptyBoard();
-    currentPlayer = 1;
-    gameOver = false;
-    writeGameState(board, currentPlayer);
-  } else {
-    board = data.board;
-    currentPlayer = data.currentPlayer;
-    gameOver = checkBoardWinner(board);
-    renderBoard(board);
-  }
+  renderBoard(board);
+  updateStatusText();
 });
 
-function checkBoardWinner(board) {
-  for (let i = 0; i < BOARD_SIZE; i++) {
-    for (let j = 0; j < BOARD_SIZE; j++) {
-      if (board[i][j] && checkWin(board, i, j, board[i][j])) return true;
-    }
+// 更新玩家狀態顯示
+function updateStatusText() {
+  const status = document.getElementById("status");
+  if (!assignedPlayer) {
+    status.textContent = "🔒 觀戰模式中（無法下棋）";
+  } else if (gameOver) {
+    status.textContent = "🎉 遊戲已結束";
+  } else if (assignedPlayer === currentPlayer) {
+    status.textContent = `✅ 輪到你下棋（玩家 ${assignedPlayer}）`;
+  } else {
+    status.textContent = `⏳ 等待對手（你是玩家 ${assignedPlayer}）`;
   }
-  return false;
 }
 
+// 重新開始按鈕
 document.getElementById("resetBtn").addEventListener("click", () => {
-  board = createEmptyBoard();
-  currentPlayer = 1;
-  gameOver = false;
-  writeGameState(board, currentPlayer);
+  const newBoard = createEmptyBoard();
+  const players = {
+    1: playerId,
+    2: null
+  };
+  writeGameState(newBoard, 1, players, false);
 });
 
-// ✅ 手動重設 Firebase 裡的棋盤尺寸
+// 額外：開發者用手動 reset 函數
 window.resetBoardSize = () => {
   const emptyBoard = createEmptyBoard();
-  set(ref(database, "gameState"), {
+  set(gameStateRef, {
     board: emptyBoard,
-    currentPlayer: 1
+    currentPlayer: 1,
+    players: {
+      1: playerId,
+      2: null
+    },
+    gameOver: false
   });
-  set(ref(database, "players"), {});
 };
