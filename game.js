@@ -8,7 +8,7 @@ import {
   onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-// ⚙️ 改這裡控制棋盤大小
+// ⚙️ 棋盤大小
 const BOARD_SIZE = 30;
 document.documentElement.style.setProperty('--board-size', BOARD_SIZE);
 
@@ -57,7 +57,7 @@ let assignedPlayer = null;
 let gameEnded = false;
 let players = {};
 
-// 產生唯一 playerId（保存在 localStorage）
+// 產生唯一 playerId
 let playerId = localStorage.getItem("playerId");
 if (!playerId) {
   playerId = crypto.randomUUID();
@@ -66,34 +66,25 @@ if (!playerId) {
 
 function checkWin(board, x, y, player) {
   const directions = [
-    [1, 0],   // →
-    [0, 1],   // ↓
-    [1, 1],   // ↘
-    [1, -1]   // ↗
+    [1, 0], [0, 1], [1, 1], [1, -1]
   ];
 
   for (const [dx, dy] of directions) {
     let count = 1;
-
     for (let i = 1; i < 5; i++) {
-      const nx = x + dx * i;
-      const ny = y + dy * i;
+      const nx = x + dx * i, ny = y + dy * i;
       if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
       if (board[nx][ny] === player) count++;
       else break;
     }
-
     for (let i = 1; i < 5; i++) {
-      const nx = x - dx * i;
-      const ny = y - dy * i;
+      const nx = x - dx * i, ny = y - dy * i;
       if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) break;
       if (board[nx][ny] === player) count++;
       else break;
     }
-
     if (count >= 5) return true;
   }
-
   return false;
 }
 
@@ -101,7 +92,6 @@ function handleCellClick(i, j) {
   if (gameEnded || board[i][j] !== 0 || assignedPlayer !== currentPlayer) return;
 
   board[i][j] = currentPlayer;
-
   if (checkWin(board, i, j, currentPlayer)) {
     alert(`玩家 ${currentPlayer} 勝利！`);
     gameEnded = true;
@@ -113,9 +103,41 @@ function handleCellClick(i, j) {
   writeGameState(board, currentPlayer, players);
 }
 
+// 🔄 嘗試指派玩家位置（新進或遞補）
+function tryAssignPlayer(players) {
+  if (assignedPlayer) return;
+
+  runTransaction(gameStateRef, (gameState) => {
+    if (!gameState) return gameState;
+
+    const currentPlayers = gameState.players || {};
+
+    if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
+      // 已有位置
+      return gameState;
+    }
+
+    if (!currentPlayers[1]) {
+      currentPlayers[1] = playerId;
+      assignedPlayer = 1;
+    } else if (!currentPlayers[2]) {
+      currentPlayers[2] = playerId;
+      assignedPlayer = 2;
+    }
+
+    gameState.players = currentPlayers;
+    return gameState;
+  }).then(() => {
+    if (assignedPlayer) {
+      const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
+      onDisconnect(playerSlotRef).remove();
+    }
+  });
+}
+
+// 🔁 Firebase 監聽
 onValue(gameStateRef, (snapshot) => {
   const data = snapshot.val();
-
   if (!data || !Array.isArray(data.board) || data.board.length !== BOARD_SIZE) {
     board = createEmptyBoard();
     currentPlayer = 1;
@@ -128,44 +150,12 @@ onValue(gameStateRef, (snapshot) => {
   currentPlayer = data.currentPlayer;
   players = data.players || {};
 
-  // 使用 transaction 安全指派玩家身份
+  // 若未分配，嘗試分配或遞補
   if (!assignedPlayer) {
-    runTransaction(gameStateRef, (gameState) => {
-      if (!gameState) return gameState;
-
-      const currentPlayers = gameState.players || {};
-
-      // 確保玩家 1 和玩家 2 只會有一個註冊
-      if (currentPlayers[1] === playerId || currentPlayers[2] === playerId) {
-        return gameState; // 玩家已經有註冊，返回現有的遊戲狀態
-      }
-
-      // 如果玩家1或玩家2沒註冊，給予空位
-      if (!currentPlayers[1]) {
-        currentPlayers[1] = playerId;
-        assignedPlayer = 1;
-      } else if (!currentPlayers[2]) {
-        currentPlayers[2] = playerId;
-        assignedPlayer = 2;
-      } else {
-        // 如果兩個玩家都已經註冊，則不做更動
-        assignedPlayer = null;
-      }
-
-      gameState.players = currentPlayers;
-      return gameState;
-    }).then(() => {
-      // 當事務成功提交後，進一步處理
-      if (assignedPlayer !== null) {
-        const playerSlotRef = ref(database, `gameState/players/${assignedPlayer}`);
-        onDisconnect(playerSlotRef).remove();
-      }
-    });
+    if (players[1] === playerId) assignedPlayer = 1;
+    else if (players[2] === playerId) assignedPlayer = 2;
+    else tryAssignPlayer(players);
   }
-
-  // 若已有指派過，重設本地記錄
-  if (players[1] === playerId) assignedPlayer = 1;
-  else if (players[2] === playerId) assignedPlayer = 2;
 
   renderBoard(board);
   updateStatusText();
@@ -190,7 +180,7 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   writeGameState(board, currentPlayer, players);
 });
 
-// ✅ 手動清除棋盤（例如控制台呼叫）
+// ✅ 手動清空棋盤
 window.resetBoardSize = () => {
   const emptyBoard = createEmptyBoard();
   set(gameStateRef, {
